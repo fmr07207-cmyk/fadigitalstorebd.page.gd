@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FA DIGITAL STORE BD</title>
+  <meta name="description" content="FA Digital Store BD - Official Telegram Mini Web App with Firebase, RupantorPay auto payment, 2FA generator, and Admin Panel">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Hind Siliguri"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500 selection:text-black antialiased font-sans">
+  
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-extrabold text-black shadow-lg shadow-emerald-500/20 text-lg">
+          FA
+        </div>
+        <div>
+          <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
+            FA DIGITAL STORE BD
+            <span id="user-role-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold border border-emerald-500/30">Live</span>
+          </h1>
+          <p id="user-display-name" class="text-xs text-slate-400 truncate max-w-[170px]">Guest User</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <div class="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 text-xs font-bold">
+          <button onclick="setLanguage('en')" id="lang-btn-en" class="px-2 py-1 rounded-lg bg-emerald-500 text-black">EN</button>
+          <button onclick="setLanguage('bn')" id="lang-btn-bn" class="px-2 py-1 rounded-lg text-slate-400 hover:text-white"></button>
+          <button onclick="setLanguage('ar')" id="lang-btn-ar" class="px-2 py-1 rounded-lg text-slate-400 hover:text-white"></button>
+        </div>
+
+        <button onclick="openDepositModal()" class="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-95 shadow-sm">
+          <span></span>
+          <span id="user-balance-badge">0.00 BDT</span>
+          <span class="text-xs bg-emerald-500 text-black px-1.5 py-0.5 rounded-md font-bold">+</span>
+        </button>
+
+        <div id="auth-header-container">
+          <button onclick="openAuthModal()" id="btn-header-login" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-extrabold text-xs transition active:scale-95 shadow-md shadow-emerald-500/20 flex items-center gap-1">
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="bg-slate-900 border-b border-slate-800 py-1.5 px-4 overflow-hidden">
+    <div class="max-w-4xl mx-auto flex items-center gap-3">
+      <span class="shrink-0 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+         NOTICE
+      </span>
+      <div class="overflow-hidden whitespace-nowrap w-full">
+        <p id="sliding-notice-text" class="inline-block text-xs text-slate-300 font-medium animate-marquee">
+           RupantorPay auto payment & bKash/Nagad/Rocket active! Use coupon WELCOME10 for 10% discount on all orders!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-4xl mx-auto px-4 pt-4">
+    <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs sm:text-sm">
+      <button onclick="switchTab('store')" id="tab-btn-store" class="tab-btn active px-4 py-2 rounded-xl font-bold transition whitespace-nowrap bg-emerald-500 text-black shadow-md shadow-emerald-500/20">
+         Store Products
+      </button>
+      <button onclick="switchTab('2fa')" id="tab-btn-2fa" class="tab-btn px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-300 hover:text-white">
+         2FA Authenticator
+      </button>
+      <button onclick="switchTab('profile')" id="tab-btn-profile" class="tab-btn px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-300 hover:text-white">
+         Profile & History
+      </button>
+      <button onclick="switchTab('affiliate')" id="tab-btn-affiliate" class="tab-btn px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-300 hover:text-white">
+         Affiliate & Earn
+      </button>
+      <button onclick="switchTab('support')" id="tab-btn-support" class="tab-btn px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-300 hover:text-white">
+         Support & Links
+      </button>
+      <button onclick="openAdminModal()" id="nav-admin-btn" class="hidden px-4 py-2 rounded-xl font-bold transition whitespace-nowrap bg-purple-900/60 border border-purple-500/60 text-purple-200 hover:bg-purple-800/80 animate-pulse shadow-lg shadow-purple-950/50">
+          
+      </button>
+    </div>
+  </div>
+
+  <div class="max-w-4xl mx-auto px-4 pt-2">
+    <div class="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-cyan-950/70 border border-emerald-500/20 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="space-y-1">
+        <span class="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold uppercase tracking-wider">
+           INSTANT DELIVERY STORE
+        </span>
+        <h2 id="hero-welcome-text" class="text-lg sm:text-xl font-extrabold text-white">
+          Welcome to FA DIGITAL STORE BD
+        </h2>
+        <p class="text-xs text-slate-300">
+          Fast Residential Proxies, High-Speed VPNs & Verified Mails in Telegram Mini App.
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="openDepositModal()" class="px-4 py-2.5 bg-emerald-500 text-black font-extrabold rounded-xl text-xs hover:bg-emerald-400 transition">
+           Add Balance
+        </button>
+        <button onclick="openCouponModal()" class="px-3.5 py-2.5 bg-slate-800 text-slate-200 font-bold rounded-xl text-xs hover:bg-slate-700 transition">
+           Coupon
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+    <section id="view-store" class="tab-view space-y-6">
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <button onclick="filterCategory('all', event)" class="cat-pill active px-3.5 py-1.5 rounded-xl bg-emerald-500 text-black font-bold">All Products</button>
+        <button onclick="filterCategory('mail', event)" class="cat-pill px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800"> Mail (Gmail / Outlook)</button>
+        <button onclick="filterCategory('proxy', event)" class="cat-pill px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800"> Residential Proxy</button>
+        <button onclick="filterCategory('vpn', event)" class="cat-pill px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800"> Premium VPN</button>
+        <button onclick="filterCategory('other', event)" class="cat-pill px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800"> Other</button>
+      </div>
+
+      <div class="relative">
+        <input type="text" id="prod-search-input" oninput="renderProducts()" placeholder="  (Gmail, Proxy, NordVPN)..." class="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none">
+      </div>
+
+      <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <section id="view-2fa" class="tab-view hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-xl mx-auto space-y-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-xl">
+            
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">2FA OTP Authenticator</h3>
+            <p class="text-xs text-slate-400">RFC 6238 Standard Google Authenticator Generator</p>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Enter 2FA Secret Key (Base32):</label>
+          <input type="text" id="totp-secret-input" placeholder="e.g. JBSWY3DPEHPK3PXP" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-2xl px-4 py-2.5 text-xs text-cyan-300 font-mono tracking-widest uppercase focus:outline-none">
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2">
+          <span class="text-xs text-slate-400 font-medium">Current 6-Digit OTP Code</span>
+          <div id="totp-code-display" class="text-3xl sm:text-4xl font-extrabold tracking-widest text-emerald-400 font-mono">
+            ------
+          </div>
+          <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+            <div id="totp-progress-bar" class="bg-emerald-500 h-1.5 transition-all duration-1000" style="width: 100%"></div>
+          </div>
+          <p class="text-[11px] text-slate-500">Refreshes automatically every 30 seconds</p>
+        </div>
+
+        <button onclick="copyTotpCode()" class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-2xl text-xs transition flex items-center justify-center gap-2">
+          <span></span>
+          <span>Copy 6-Digit Code</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="view-profile" class="tab-view hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-1">
+          <span class="text-xs text-slate-400">User / Telegram ID</span>
+          <p id="prof-uid" class="text-lg font-bold text-white font-mono truncate">---</p>
+          <p id="prof-email-display" class="text-xs text-purple-400 truncate">Not logged in</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-1">
+          <span class="text-xs text-slate-400">Available Balance</span>
+          <p id="prof-bal" class="text-lg font-bold text-emerald-400 font-mono">0.00 BDT</p>
+          <button onclick="openDepositModal()" class="text-xs text-emerald-400 underline font-semibold">+ Add Funds</button>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-1">
+          <span class="text-xs text-slate-400">Total Purchases</span>
+          <p id="prof-spent" class="text-lg font-bold text-cyan-400 font-mono">0.00 BDT</p>
+          <span class="text-[11px] text-slate-500">Auto instant delivery</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3">
+        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+          <span></span>
+          <span>Recent Purchases & Delivered Content</span>
+        </h4>
+        <div id="orders-list-box" class="space-y-2"></div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3">
+        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+          <span></span>
+          <span>Deposit History</span>
+        </h4>
+        <div id="deposits-list-box" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <section id="view-affiliate" class="tab-view hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 max-w-xl mx-auto">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center text-xl">
+            
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Affiliate Commission Program</h3>
+            <p class="text-xs text-slate-400">Share your link and earn automatic lifetime commission</p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-purple-950/30 border border-purple-500/30 space-y-2">
+          <span class="text-xs text-purple-300 font-bold">Commission Rate: 10% on Every Deposit & Order!</span>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Whenever a referred user deposits balance or purchases accounts, your balance is credited automatically in real time.
+          </p>
+          <p class="text-xs text-slate-400">Total Earned So Far: <span id="prof-ref-earn" class="text-emerald-400 font-bold font-mono">0.00 BDT</span></p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Your Unique Invite Link:</label>
+          <div class="flex gap-2">
+            <input type="text" id="affiliate-link-input" readonly class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-2 text-xs text-emerald-400 font-mono select-all focus:outline-none">
+            <button onclick="copyAffiliateLink()" class="px-4 py-2 bg-emerald-500 text-black font-bold rounded-2xl text-xs hover:bg-emerald-400 transition">
+              Copy Link
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-support" class="tab-view hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <span></span>
+            <span>Customer Support</span>
+          </h4>
+          <p class="text-xs text-slate-300">
+            For deposits, account issues, or bulk pricing, contact our administrator:
+          </p>
+          <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 text-xs space-y-1">
+            <p>Admin ID: <code id="support-admin-id-val" class="text-emerald-400 font-mono">6882165252</code></p>
+            <p>Username: <code id="support-admin-user-val" class="text-cyan-400 font-mono">@FADigitalAdmin</code></p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="copyAdminId()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl transition">
+               Copy Admin ID
+            </button>
+            <a id="support-link-btn" href="https://t.me/FADigitalAdmin" target="_blank" class="flex-1 py-2 bg-emerald-500 text-black text-center text-xs font-bold rounded-xl hover:bg-emerald-400 transition">
+               Telegram Inbox
+            </a>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <span></span>
+            <span>Integrated Web Portals</span>
+          </h4>
+          <p class="text-xs text-slate-300">
+            Access verification tools seamlessly without opening external browsers:
+          </p>
+          <div class="space-y-2">
+            <button onclick="openInAppViewer('Mail OTP Extractor', storeSettings.globalMailCodeUrl || 'https://korra.cababu.cfd/mail')" class="w-full py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/40 text-left text-xs font-semibold text-slate-200 flex items-center justify-between transition">
+              <span> Mail OTP / 2FA Code Reader</span>
+              <span class="text-emerald-400 font-mono text-[10px]">Open &rarr;</span>
+            </button>
+            <button onclick="openInAppViewer('Live Proxy Checker', storeSettings.globalProxyCheckerUrl || 'https://checker.proxycheck.io')" class="w-full py-2.5 px-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-500/40 text-left text-xs font-semibold text-slate-200 flex items-center justify-between transition">
+              <span> Proxy IP & Port Speed Checker</span>
+              <span class="text-cyan-400 font-mono text-[10px]">Open &rarr;</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="modal-inapp" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <span id="inapp-viewer-title" class="text-xs font-bold text-white truncate">In-App Portal</span>
+        <button onclick="closeInAppViewer()" class="p-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white"></button>
+      </div>
+      <div class="flex-1 w-full bg-slate-950 relative">
+        <iframe id="inapp-viewer-frame" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-auth" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 my-8">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 text-black flex items-center justify-center font-extrabold shadow-lg shadow-emerald-500/20">
+            FA
+          </div>
+          <div>
+            <h3 id="auth-modal-title" class="text-base sm:text-lg font-bold text-white">
+                (Sign In)
+            </h3>
+            <p class="text-[11px] text-slate-400">FA DIGITAL STORE BD</p>
+          </div>
+        </div>
+        <button onclick="closeAuthModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"></button>
+      </div>
+
+      <div class="flex rounded-2xl bg-slate-950 p-1 border border-slate-800 text-xs font-bold">
+        <button type="button" id="auth-tab-login" onclick="switchAuthMode('login')" class="flex-1 py-2 rounded-xl transition bg-emerald-500 text-black shadow-md shadow-emerald-500/20">
+           (Login)
+        </button>
+        <button type="button" id="auth-tab-signup" onclick="switchAuthMode('signup')" class="flex-1 py-2 rounded-xl transition text-slate-400 hover:text-white">
+            (Sign Up)
+        </button>
+      </div>
+
+      <div id="auth-error-box" class="hidden p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs"></div>
+      <div id="auth-success-box" class="hidden p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs"></div>
+
+      <form id="form-auth-login" onsubmit="handleAuthLogin(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold"> :</label>
+          <input type="email" id="auth-login-email" required placeholder="name@gmail.com" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">:</label>
+          <input type="password" id="auth-login-pass" required placeholder="" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-extrabold rounded-2xl text-xs transition active:scale-98 shadow-lg shadow-emerald-500/20">
+            (Sign In)
+        </button>
+      </form>
+
+      <form id="form-auth-signup" onsubmit="handleAuthSignup(event)" class="hidden space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">  :</label>
+          <input type="text" id="auth-signup-name" required placeholder="   " class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold"> :</label>
+          <input type="email" id="auth-signup-email" required placeholder="example@mail.com" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">  :</label>
+          <input type="password" id="auth-signup-pass" required placeholder="   " class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-1 font-semibold">  ():</label>
+          <input type="text" id="auth-signup-tg" placeholder="@yourusername" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-white placeholder:text-slate-600 focus:outline-none">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-black font-extrabold rounded-2xl text-xs transition active:scale-98 shadow-lg shadow-emerald-500/20">
+            (Register Now)
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-deposit" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[90vh]">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white"> Add Balance (  )</h3>
+        <button onclick="closeDepositModal()" class="text-slate-400 hover:text-white text-lg"></button>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-400 mb-2">Select Amount (BDT):</label>
+        <div class="grid grid-cols-4 gap-2 mb-2">
+          <button onclick="setDepositAmount(50)" class="py-1.5 rounded-xl bg-slate-800 text-xs font-bold text-emerald-400">50</button>
+          <button onclick="setDepositAmount(100)" class="py-1.5 rounded-xl bg-slate-800 text-xs font-bold text-emerald-400">100</button>
+          <button onclick="setDepositAmount(200)" class="py-1.5 rounded-xl bg-slate-800 text-xs font-bold text-emerald-400">200</button>
+          <button onclick="setDepositAmount(500)" class="py-1.5 rounded-xl bg-slate-800 text-xs font-bold text-emerald-400">500</button>
+        </div>
+        <input type="number" id="deposit-amount-input" value="100" min="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+      </div>
+
+      <div class="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/40 to-slate-950 border border-emerald-500/30 space-y-3">
+        <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+          <span></span>
+          <span>RupantorPay Auto Gateway ( )</span>
+        </span>
+        <button onclick="triggerRupantorPayAuto()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold rounded-xl text-xs transition active:scale-95 shadow-md shadow-emerald-500/20">
+           Pay with RupantorPay (In-App)
+        </button>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+        <span class="text-xs font-bold text-white"> Manual Send Money ( /  / )</span>
+        <div class="text-[11px] space-y-1 text-slate-300">
+          <p> bKash: <code id="dep-bkash-num" class="text-emerald-400 font-mono">017XXXXXXXX</code></p>
+          <p> Nagad: <code id="dep-nagad-num" class="text-emerald-400 font-mono">018XXXXXXXX</code></p>
+          <p> Rocket: <code id="dep-rocket-num" class="text-emerald-400 font-mono">019XXXXXXXX</code></p>
+        </div>
+        <input type="text" id="manual-trx-input" placeholder="TrxID (  )" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono">
+        <button onclick="submitManualDeposit()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition">
+          Submit TrxID ( )
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-coupon" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white"> Redeem Coupon ( )</h3>
+        <button onclick="closeCouponModal()" class="text-slate-400 hover:text-white"></button>
+      </div>
+      <input type="text" id="coupon-code-input" placeholder="WELCOME10" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-emerald-400 uppercase font-mono tracking-wider">
+      <button onclick="applyCouponNow()" class="w-full py-2.5 bg-emerald-500 text-black font-bold rounded-xl text-sm transition">
+        Apply Coupon
+      </button>
+    </div>
+  </div>
+
+  <div id="modal-delivery" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-emerald-500/40 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span></span>
+          <span>Order Delivered Successfully!</span>
+        </h3>
+        <button onclick="closeDeliveryModal()" class="text-slate-400 hover:text-white"></button>
+      </div>
+      <p id="delivery-prod-name" class="text-xs text-slate-300 font-semibold"></p>
+      <div>
+        <label class="block text-[11px] text-slate-400 mb-1 font-semibold">Account / Proxy Details:</label>
+        <div id="delivery-content-box" class="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-emerald-400 break-all select-all"></div>
+      </div>
+      <button onclick="copyDeliveryContent()" class="w-full py-2.5 bg-emerald-500 text-black font-bold rounded-xl text-xs hover:bg-emerald-400 transition">
+         Copy Details
+      </button>
+    </div>
+  </div>
+
+  <div id="modal-admin" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full p-6 space-y-5 shadow-2xl overflow-y-auto max-h-[95vh]">
+      <div id="admin-login-box" class="space-y-4 py-6 text-center max-w-sm mx-auto">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center text-xl font-bold">
+          
+        </div>
+        <h3 class="text-lg font-bold text-white">  </h3>
+        <p class="text-xs text-slate-400">
+              
+        </p>
+        <div class="space-y-2 text-left text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1 font-semibold"> :</label>
+            <input type="email" id="admin-auth-email-input" placeholder="admin@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white">
+          </div>
+          <div>
+            <label class="block text-slate-300 mb-1 font-semibold"> :</label>
+            <input type="password" id="admin-pass-input" placeholder="" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-white">
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="loginAdmin()" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs transition">
+             
+          </button>
+          <button onclick="closeAdminModal()" class="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs">
+            
+          </button>
+        </div>
+      </div>
+
+      <div id="admin-dash-box" class="hidden space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold"></span>
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-white">Super Admin Dashboard</h3>
+              <p class="text-[11px] text-purple-300">FA DIGITAL STORE Control Panel</p>
+            </div>
+          </div>
+          <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white text-lg p-1"></button>
+        </div>
+
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 text-xs border-b border-slate-800">
+          <button onclick="switchAdminTab('ad-view-deposits', this)" class="ad-tab-btn active px-3 py-1.5 rounded-lg bg-purple-600 text-white font-semibold"> Deposits</button>
+          <button onclick="switchAdminTab('ad-view-products', this)" class="ad-tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"> Products</button>
+          <button onclick="switchAdminTab('ad-view-stock', this)" class="ad-tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"> Bulk Stock</button>
+          <button onclick="switchAdminTab('ad-view-gateway', this)" class="ad-tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"> RupantorPay</button>
+          <button onclick="switchAdminTab('ad-view-support', this)" class="ad-tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"> Support IDs</button>
+          <button onclick="switchAdminTab('ad-view-notices', this)" class="ad-tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"> Notices</button>
+          <button onclick="switchAdminTab('ad-view-coupons', this)" class="ad-tab-btn px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300"> Coupons</button>
+        </div>
+
+        <div id="ad-view-deposits" class="ad-subview space-y-4">
+          <h4 class="text-xs font-bold text-white">Pending User Deposit Requests</h4>
+          <div id="admin-pending-deposits-list" class="space-y-2"></div>
+        </div>
+
+        <div id="ad-view-products" class="ad-subview hidden space-y-6">
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
+            <h4 class="font-bold text-white">Add New Product</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input type="text" id="new-prod-name" placeholder="Product Name (e.g. Gmail Verified 2023)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+              <input type="number" id="new-prod-price" placeholder="Price (BDT)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <select id="new-prod-cat" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+                <option value="mail">Mail (Gmail / Outlook)</option>
+                <option value="proxy">Proxy (Residential / Datacenter)</option>
+                <option value="vpn">VPN (NordVPN / ExpressVPN)</option>
+                <option value="other">Other Service</option>
+              </select>
+              <input type="text" id="new-prod-code-url" placeholder="Code / Web Tool URL (optional)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+            </div>
+            <button onclick="adminAddProduct()" class="w-full py-2 bg-emerald-500 text-black font-bold rounded-xl">Save Product</button>
+          </div>
+
+          <div class="space-y-2">
+            <h4 class="text-xs font-bold text-white">Existing Products</h4>
+            <div id="admin-products-table" class="space-y-2 text-xs"></div>
+          </div>
+        </div>
+
+        <div id="ad-view-stock" class="ad-subview hidden space-y-4 text-xs">
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <h4 class="font-bold text-white">Bulk Stock Loader ( )</h4>
+            <label class="block text-slate-400">Select Product:</label>
+            <select id="stock-target-prod" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white"></select>
+            <label class="block text-slate-400">Stock Content (One Account/Proxy Per Line):</label>
+            <textarea id="bulk-stock-input" rows="4" placeholder="mail:pass:recovery:2fa_secret&#10;mail2:pass2:rec2:2fa2" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-mono"></textarea>
+            <button onclick="adminAddStockBulk()" class="w-full py-2 bg-cyan-600 text-white font-bold rounded-xl">Save & Load Stock</button>
+          </div>
+        </div>
+
+        <div id="ad-view-gateway" class="ad-subview hidden space-y-4 text-xs">
+          <h4 class="font-bold text-white">RupantorPay Auto Payment Gateway & Numbers</h4>
+          <div>
+            <label class="block text-slate-400 mb-1">RupantorPay API Key:</label>
+            <input type="text" id="ad-set-rp-api" placeholder="fa_rupantor_live_key_..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">RupantorPay Device Key:</label>
+            <input type="text" id="ad-set-rp-dev" placeholder="dev_sec_..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">RupantorPay Checkout URL:</label>
+            <input type="text" id="ad-set-rp-url" placeholder="https://rupantorpay.com/api/checkout" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-mono">
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label class="block text-slate-400 mb-1">bKash Personal:</label>
+              <input type="text" id="ad-set-bkash" placeholder="017XXXXXXXX" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Nagad Personal:</label>
+              <input type="text" id="ad-set-nagad" placeholder="018XXXXXXXX" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Rocket Personal:</label>
+              <input type="text" id="ad-set-rocket" placeholder="019XXXXXXXX" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+            </div>
+          </div>
+          <button onclick="adminSaveGatewaySettings()" class="w-full py-2.5 bg-emerald-500 text-black font-bold rounded-xl">Save Gateway Settings</button>
+        </div>
+
+        <div id="ad-view-support" class="ad-subview hidden space-y-4 text-xs">
+          <h4 class="font-bold text-white">Support Admin ID & Community URLs</h4>
+          <div>
+            <label class="block text-slate-400 mb-1">Support Admin ID (Telegram ID):</label>
+            <input type="text" id="ad-set-sup-id" placeholder="6882165252" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Support Username:</label>
+            <input type="text" id="ad-set-sup-user" placeholder="@FADigitalAdmin" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Official Channel URL:</label>
+            <input type="text" id="ad-set-sup-chan" placeholder="https://t.me/FADigitalChannel" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Community Group URL:</label>
+            <input type="text" id="ad-set-sup-grp" placeholder="https://t.me/FADigitalCommunityGroup" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Affiliate Commission Rate (%):</label>
+            <input type="number" id="ad-set-commission" placeholder="10" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+          </div>
+          <button onclick="adminSaveSupportSettings()" class="w-full py-2.5 bg-cyan-600 text-white font-bold rounded-xl">Save Support Settings</button>
+        </div>
+
+        <div id="ad-view-notices" class="ad-subview hidden space-y-4 text-xs">
+          <h4 class="font-bold text-white">Notices & Welcome Message</h4>
+          <div>
+            <label class="block text-slate-400 mb-1">Hero Welcome Headline:</label>
+            <input type="text" id="ad-set-welcome" placeholder="Welcome Message" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Sliding Flash Notice (Marquee):</label>
+            <textarea id="ad-set-sliding" rows="3" placeholder="Sliding ticker text..." class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white"></textarea>
+          </div>
+          <button onclick="adminSaveNoticeSettings()" class="w-full py-2.5 bg-amber-500 text-black font-bold rounded-xl">Save Notices</button>
+        </div>
+
+        <div id="ad-view-coupons" class="ad-subview hidden space-y-4 text-xs">
+          <h4 class="font-bold text-white">Coupon Management</h4>
+          <div class="p-3 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+            <input type="text" id="new-coup-code" placeholder="Coupon Code (e.g. FA20)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white font-mono uppercase">
+            <input type="number" id="new-coup-pct" placeholder="Discount % (e.g. 20)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-white">
+            <button onclick="adminAddCoupon()" class="w-full py-2 bg-emerald-500 text-black font-bold rounded-xl">Create Coupon</button>
+          </div>
+          <div id="admin-coupons-table" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
